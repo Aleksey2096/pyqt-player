@@ -11,7 +11,7 @@ class Window(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowIcon(QIcon('icon.png'))
+        self.setWindowIcon(QIcon('img/icon.png'))
         self.setWindowTitle('Alex MultiMedia')
         self.setGeometry(350, 100, 700, 500)
 
