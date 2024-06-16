@@ -1,39 +1,38 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget, QGridLayout
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QStyle
+from PyQt5.QtWidgets import QApplication, QMainWindow, QSlider, QVBoxLayout, QWidget,QStyle
+from PyQt5.QtCore import Qt
 
-class IconGallery(QWidget):
-    def __init__(self):
-        super().__init__()
-
-        layout = QGridLayout()
-        self.setLayout(layout)
-
-        # List of QStyle.StandardPixmap enumerations
-        icon_names = [attr for attr in dir(QStyle) if attr.startswith('SP_')]
-
-        for index, icon_name in enumerate(icon_names):
-            pixmap = self.style().standardPixmap(getattr(QStyle, icon_name))
-            icon_label = QLabel()
-            icon_label.setPixmap(pixmap)
-            text_label = QLabel(icon_name)
-
-            layout.addWidget(icon_label, index // 4, (index * 2) % 8)
-            layout.addWidget(text_label, index // 4, (index * 2) % 8 + 1)
+class CustomSlider(QSlider):
+    def __init__(self, orientation=Qt.Horizontal, parent=None):
+        super().__init__(orientation, parent)
+    
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            value = QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), event.x(), self.width())
+            self.setValue(value)
+            event.accept()
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("QStyle.SP_ Icons Gallery")
-        self.setGeometry(100, 100, 800, 600)
+        self.setWindowTitle("Slider Click Position Example")
+        self.setGeometry(100, 100, 300, 200)
 
-        icon_gallery = IconGallery()
-        self.setCentralWidget(icon_gallery)
+        central_widget = QWidget(self)
+        self.setCentralWidget(central_widget)
+
+        layout = QVBoxLayout(central_widget)
+
+        self.slider = CustomSlider(Qt.Horizontal)
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(100)
+
+        layout.addWidget(self.slider)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     main_window = MainWindow()
     main_window.show()
     sys.exit(app.exec_())
+
