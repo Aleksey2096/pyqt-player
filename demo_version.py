@@ -2,18 +2,18 @@ from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVB
 from PyQt5.QtGui import QIcon, QPalette
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5.QtCore import Qt, QUrl, QTimer
+from PyQt5.QtCore import Qt, QUrl, QTimer,QSize
 import sys
 
 
-class Window(QMainWindow):
+class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
 
-        self.setWindowIcon(QIcon('img/icon.png'))
+        self.setWindowIcon(QIcon('img/app_icon.png'))
         self.setWindowTitle('Alex MultiMedia')
-        self.setGeometry(350, 100, 700, 500)
+        self.setGeometry(320, 180, 960, 540)
 
         # self.setStyleSheet("background-color: black;")
         # palette = self.palette()
@@ -44,7 +44,8 @@ class Window(QMainWindow):
         self.controls_layout.addWidget(self.playBtn)
         self.controls_layout.addWidget(self.slider)
         self.controls_layout.addWidget(self.timeLabel)
-        self.controls_layout.addWidget(self.closeControlsBtn)
+        self.controls_layout.addWidget(self.fullScreenBtn)
+        self.controls_layout.addWidget(self.hideControlsBtn)
 
         self.layout = QVBoxLayout()
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -56,6 +57,15 @@ class Window(QMainWindow):
         self.mediaPlayer.durationChanged.connect(self.duration_handler)
 
         self.central_widget.setLayout(self.layout)
+
+        self.central_widget.setStyleSheet("""
+            QLabel {
+                font-size: 16px;
+            }
+            QPushButton {
+                font-size: 11px;
+            }
+        """)
 
         # Create a timer to update the playback time label
         self.timer = QTimer(self)
@@ -69,12 +79,14 @@ class Window(QMainWindow):
         self.container.mousePressEvent = self.mouse_press_handler
 
     def create_controls(self):
-        self.openBtn = QPushButton('Open Video', self.container)
+        self.openBtn = QPushButton('    Open File', self.container)
+        self.openBtn.setIcon(QIcon('img/file_open.png'))
         self.openBtn.clicked.connect(self.open_file)
 
         self.playBtn = QPushButton()
         self.playBtn.setEnabled(False)
         self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+        self.playBtn.setIconSize(QSize(25,25))
         self.playBtn.clicked.connect(self.play_video)
         self.playBtn.setStyleSheet("margin: 20px;")
 
@@ -85,13 +97,20 @@ class Window(QMainWindow):
         self.timeLabel = QLabel('00:00:00 / 00:00:00')
         self.timeLabel.setContentsMargins(20, 0, 0, 0)
 
-        self.closeControlsBtn = QPushButton()
-        self.closeControlsBtn.setIcon(self.style().standardIcon(QStyle.SP_TitleBarCloseButton))
-        self.closeControlsBtn.clicked.connect(self.hide_controls)
-        self.closeControlsBtn.setStyleSheet("margin: 20px;")
+        self.fullScreenBtn = QPushButton()
+        self.fullScreenBtn.setIcon(QIcon('img/fullscreen.png'))
+        self.fullScreenBtn.setIconSize(QSize(20,20))
+        self.fullScreenBtn.clicked.connect(self.screen_mode_handler)
+        self.fullScreenBtn.setStyleSheet("margin: 20px 0px 20px 20px;")
+
+        self.hideControlsBtn = QPushButton()
+        self.hideControlsBtn.setIcon(QIcon('img/hide.png'))
+        self.hideControlsBtn.setIconSize(QSize(20,20))
+        self.hideControlsBtn.clicked.connect(self.hide_controls)
+        self.hideControlsBtn.setStyleSheet("margin: 20px;")
 
     def open_file(self):
-        fileName, _ = QFileDialog.getOpenFileName(self, 'Open Video')
+        fileName, _ = QFileDialog.getOpenFileName(self, 'Open File')
 
         if fileName != '':
             self.mediaPlayer.setMedia(
@@ -108,11 +127,9 @@ class Window(QMainWindow):
 
     def playing_state_handler(self, state):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
-            self.playBtn.setIcon(
-                self.style().standardIcon(QStyle.SP_MediaPause))
+            self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
         else:
-            self.playBtn.setIcon(
-                self.style().standardIcon(QStyle.SP_MediaPlay))
+            self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
 
     def position_handler(self, position):
         self.slider.setValue(position)
@@ -152,10 +169,24 @@ class Window(QMainWindow):
         minutes = (ms / (1000 * 60)) % 60
         hours = (ms / (1000 * 60 * 60)) % 24
         return "%02d:%02d:%02d" % (hours, minutes, seconds)
+    
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_F11:
+            self.screen_mode_handler()
+        elif event.key() == Qt.Key_Escape and self.isFullScreen():
+            self.showMaximized()
 
+    # toggle between normal and full-screen mode
+    def screen_mode_handler(self):
+        if self.isFullScreen():
+            self.showNormal()
+            self.fullScreenBtn.setIcon(QIcon('img/fullscreen.png'))
+        else:
+            self.showFullScreen()
+            self.fullScreenBtn.setIcon(QIcon('img/fullscreen_exit.png'))
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    window = Window()
+    window = MainWindow()
     window.show()
     sys.exit(app.exec_())
