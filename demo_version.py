@@ -5,6 +5,17 @@ from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtCore import Qt, QUrl, QTimer, QSize
 import sys
 
+# Custom slider allows to instantly move handle to the current mouse click position
+class PlayerSlider(QSlider):
+    def __init__(self, orientation=Qt.Horizontal, parent=None):
+        super().__init__(orientation, parent)
+
+    def mousePressEvent(self, event):
+        super(PlayerSlider, self).mousePressEvent(event)
+        if event.button() == Qt.LeftButton:
+            value = QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), event.x(), self.width())
+            self.setValue(value)
+            event.accept()
 
 class MainWindow(QMainWindow):
 
@@ -104,11 +115,9 @@ class MainWindow(QMainWindow):
         self.timeLabel.setContentsMargins(10, 0, 20, 0)
 
         # Volume slider
-        self.volume_slider = QSlider(Qt.Horizontal, self)
+        self.volume_slider = PlayerSlider()
         self.volume_slider.setRange(0, 100)
         self.volume_slider.setValue(50)
-        # self.volume_slider.setTickPosition(QSlider.TicksBelow)
-        # self.volume_slider.setTickInterval(10)
         self.volume_slider.setFixedWidth(100)
         self.volume_slider.valueChanged.connect(self.volume_handler)
 
@@ -135,8 +144,7 @@ class MainWindow(QMainWindow):
         fileName, _ = QFileDialog.getOpenFileName(self, 'Open File')
 
         if fileName != '':
-            self.mediaPlayer.setMedia(
-                QMediaContent(QUrl.fromLocalFile(fileName)))
+            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(fileName)))
             self.playBtn.setEnabled(True)
             self.play_video()
             self.hide_controls()
@@ -149,11 +157,9 @@ class MainWindow(QMainWindow):
 
     def playing_state_handler(self, state):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
-            self.playBtn.setIcon(
-                self.style().standardIcon(QStyle.SP_MediaPause))
+            self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
         else:
-            self.playBtn.setIcon(
-                self.style().standardIcon(QStyle.SP_MediaPlay))
+            self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
 
     def position_handler(self, position):
         self.slider.setValue(position)
@@ -166,8 +172,7 @@ class MainWindow(QMainWindow):
         self.mediaPlayer.setPosition(position)
 
     def resize_event_handler(self, event):
-        self.controls_container.setGeometry(
-            20, self.height() - 45, self.width() - 40, 30)
+        self.controls_container.setGeometry(20, self.height() - 45, self.width() - 40, 30)
 
     def hide_controls(self):
         self.openBtn.hide()
@@ -184,8 +189,7 @@ class MainWindow(QMainWindow):
     def update_time_label(self):
         current_time = self.mediaPlayer.position()
         total_time = self.mediaPlayer.duration()
-        formatted_time = f'{self.format_time(
-            current_time)} / {self.format_time(total_time)}'
+        formatted_time = f'{self.format_time(current_time)} / {self.format_time(total_time)}'
         self.timeLabel.setText(formatted_time)
 
     def format_time(self, ms):
