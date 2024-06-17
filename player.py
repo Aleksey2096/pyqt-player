@@ -1,9 +1,23 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QStyle, QSlider, QFileDialog, QMainWindow, QLabel
-from PyQt5.QtGui import QIcon, QPalette
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QStyle, QSlider, QFileDialog, \
+    QMainWindow, QLabel, QShortcut
+from PyQt5.QtGui import QIcon, QPalette, QKeySequence
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtCore import Qt, QUrl, QTimer, QSize
 import sys
+
+
+# Custom slider allows to instantly move handle to the current mouse click position
+class VolumeSlider(QSlider):
+    def __init__(self, orientation=Qt.Horizontal, parent=None):
+        super().__init__(orientation, parent)
+
+    def mousePressEvent(self, event):
+        super(VolumeSlider, self).mousePressEvent(event)
+        if event.button() == Qt.LeftButton:
+            value = QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), event.x(), self.width())
+            self.setValue(value)
+            event.accept()
 
 
 class MainWindow(QMainWindow):
@@ -42,7 +56,7 @@ class MainWindow(QMainWindow):
         self.controls_layout = QHBoxLayout(self.controls_container)
         self.controls_layout.setContentsMargins(0, 0, 0, 0)
         self.controls_layout.addWidget(self.playBtn)
-        self.controls_layout.addWidget(self.slider)
+        self.controls_layout.addWidget(self.position_slider)
         self.controls_layout.addWidget(self.timeLabel)
         self.controls_layout.addWidget(self.volume_slider)
         self.controls_layout.addWidget(self.volume_label)
@@ -93,24 +107,23 @@ class MainWindow(QMainWindow):
         self.playBtn.setIconSize(QSize(25, 25))
         self.playBtn.clicked.connect(self.play_video)
         self.playBtn.setStyleSheet("margin: 20px;")
+        # Play/Stop button shortcut - 'Space'
+        self.play_shortcut = QShortcut(Qt.Key_Space, self)
+        self.play_shortcut.activated.connect(self.play_video)
 
         # Position slider
-        self.slider = QSlider(Qt.Horizontal)
-        self.slider.setRange(0, 0)
-        self.slider.sliderMoved.connect(self.set_position)
+        self.position_slider = QSlider(Qt.Horizontal)
+        self.position_slider.setRange(0, 0)
+        self.position_slider.sliderMoved.connect(self.set_position)
 
         # Position label
         self.timeLabel = QLabel('00:00:00 / 00:00:00')
         self.timeLabel.setContentsMargins(10, 0, 20, 0)
 
         # Volume slider
-        self.volume_slider = QSlider(Qt.Horizontal, self)
+        self.volume_slider = VolumeSlider()
         self.volume_slider.setRange(0, 100)
         self.volume_slider.setValue(50)
-        # self.volume_slider.setTickPosition(QSlider.TicksBelow)
-        # self.volume_slider.setTickInterval(10)
-        # self.volume_slider.setMouseTracking(True)
-        # self.volume_slider.setSingleStep(10)
         self.volume_slider.setFixedWidth(100)
         self.volume_slider.valueChanged.connect(self.volume_handler)
 
@@ -155,11 +168,11 @@ class MainWindow(QMainWindow):
             self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
 
     def position_handler(self, position):
-        self.slider.setValue(position)
+        self.position_slider.setValue(position)
         self.update_time_label()
 
     def duration_handler(self, duration):
-        self.slider.setRange(0, duration)
+        self.position_slider.setRange(0, duration)
 
     def set_position(self, position):
         self.mediaPlayer.setPosition(position)
