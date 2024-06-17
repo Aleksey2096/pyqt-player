@@ -5,7 +5,16 @@ from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtCore import Qt, QUrl, QTimer, QSize
 import sys
+import os
 
+# Transforms relative path to absolute path
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 # Custom slider allows to instantly move handle to the current mouse click position
 class VolumeSlider(QSlider):
@@ -22,10 +31,10 @@ class VolumeSlider(QSlider):
 
 class MainWindow(QMainWindow):
 
-    def __init__(self):
+    def __init__(self, file_path=None):
         super().__init__()
 
-        self.setWindowIcon(QIcon('img/app_icon.png'))
+        self.setWindowIcon(QIcon(resource_path('img/app_icon.ico')))
         self.setWindowTitle('Alex MultiMedia')
         self.setGeometry(320, 180, 960, 540)
 
@@ -35,6 +44,9 @@ class MainWindow(QMainWindow):
         # self.setPalette(palette)
 
         self.init_player()
+
+        if file_path:
+            self.open_file(file_path)
 
     def init_player(self):
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
@@ -98,8 +110,8 @@ class MainWindow(QMainWindow):
     def create_controls(self):
         # Open File button
         self.openBtn = QPushButton('    Open File', self.container)
-        self.openBtn.setIcon(QIcon('img/file_open.png'))
-        self.openBtn.clicked.connect(self.open_file)
+        self.openBtn.setIcon(QIcon(resource_path('img/file_open.png')))
+        self.openBtn.clicked.connect(self.find_file)
 
         # Play/Stop button
         self.playBtn = QPushButton()
@@ -115,7 +127,7 @@ class MainWindow(QMainWindow):
         # Replay 10 seconds button
         self.replay10btn = QPushButton()
         self.replay10btn.setEnabled(False)
-        self.replay10btn.setIcon(QIcon('img/replay_10.png'))
+        self.replay10btn.setIcon(QIcon(resource_path('img/replay_10.png')))
         self.replay10btn.setIconSize(QSize(25, 25))
         self.replay10btn.clicked.connect(lambda: self.rewind_media(10500))
         self.replay10btn.setStyleSheet("margin: 20px 0;")
@@ -126,7 +138,7 @@ class MainWindow(QMainWindow):
         # Forward 30 seconds button
         self.forward30btn = QPushButton()
         self.forward30btn.setEnabled(False)
-        self.forward30btn.setIcon(QIcon('img/forward_30.png'))
+        self.forward30btn.setIcon(QIcon(resource_path('img/forward_30.png')))
         self.forward30btn.setIconSize(QSize(25, 25))
         self.forward30btn.clicked.connect(lambda: self.forward_media(30000))
         self.forward30btn.setStyleSheet("margin: 20px 20px 20px 0;")
@@ -157,14 +169,14 @@ class MainWindow(QMainWindow):
 
         # FullScreen mode button
         self.fullScreenBtn = QPushButton()
-        self.fullScreenBtn.setIcon(QIcon('img/fullscreen.png'))
+        self.fullScreenBtn.setIcon(QIcon(resource_path('img/fullscreen.png')))
         self.fullScreenBtn.setIconSize(QSize(20, 20))
         self.fullScreenBtn.clicked.connect(self.screen_mode_handler)
         self.fullScreenBtn.setStyleSheet("margin: 20px 0px 20px 20px;")
 
         # Hide Controls button
         self.hideControlsBtn = QPushButton()
-        self.hideControlsBtn.setIcon(QIcon('img/hide.png'))
+        self.hideControlsBtn.setIcon(QIcon(resource_path('img/hide.png')))
         self.hideControlsBtn.setIconSize(QSize(20, 20))
         self.hideControlsBtn.clicked.connect(self.hide_controls)
         self.hideControlsBtn.setStyleSheet("margin: 20px;")
@@ -175,11 +187,14 @@ class MainWindow(QMainWindow):
         self.show_controls_shortcut = QShortcut(Qt.Key_Up, self)
         self.show_controls_shortcut.activated.connect(self.show_controls)
 
-    def open_file(self):
-        fileName, _ = QFileDialog.getOpenFileName(self, 'Open File')
+    def find_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, 'Open File')
 
-        if fileName != '':
-            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(fileName)))
+        self.open_file(file_path)
+
+    def open_file(self, file_path):
+        if file_path != '':
+            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(file_path)))
             self.playBtn.setEnabled(True)
             self.replay10btn.setEnabled(True)
             self.forward30btn.setEnabled(True)
@@ -245,10 +260,10 @@ class MainWindow(QMainWindow):
     def screen_mode_handler(self):
         if self.isFullScreen():
             self.showNormal()
-            self.fullScreenBtn.setIcon(QIcon('img/fullscreen.png'))
+            self.fullScreenBtn.setIcon(QIcon(resource_path('img/fullscreen.png')))
         else:
             self.showFullScreen()
-            self.fullScreenBtn.setIcon(QIcon('img/fullscreen_exit.png'))
+            self.fullScreenBtn.setIcon(QIcon(resource_path('img/fullscreen_exit.png')))
 
     def volume_handler(self, value):
         self.mediaPlayer.setVolume(value)
@@ -270,6 +285,10 @@ class MainWindow(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    window = MainWindow()
+
+    # sys argument allows to open files with this desktop app
+    file_path = sys.argv[1] if len(sys.argv) > 1 else None
+    window = MainWindow(file_path)
+
     window.show()
     sys.exit(app.exec_())
