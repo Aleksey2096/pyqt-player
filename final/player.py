@@ -7,6 +7,7 @@ from PyQt5.QtCore import Qt, QUrl, QTimer, QSize
 import sys
 import os
 
+
 # Transforms relative path to absolute path
 def resource_path(relative_path):
     try:
@@ -15,6 +16,7 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
 
     return os.path.join(base_path, relative_path)
+
 
 # Custom slider allows to instantly move handle to the current mouse click position
 class VolumeSlider(QSlider):
@@ -29,13 +31,16 @@ class VolumeSlider(QSlider):
             event.accept()
 
 
+app_name = 'Alex MultiMedia'
+
+
 class MainWindow(QMainWindow):
 
     def __init__(self, file_path=None):
         super().__init__()
 
         self.setWindowIcon(QIcon(resource_path('img/app_icon.ico')))
-        self.setWindowTitle('Alex MultiMedia')
+        self.setWindowTitle(app_name)
         self.setGeometry(320, 180, 960, 540)
 
         # self.setStyleSheet("background-color: black;")
@@ -200,6 +205,7 @@ class MainWindow(QMainWindow):
             self.forward30btn.setEnabled(True)
             self.play_video()
             self.hide_controls()
+            self.setWindowTitle(f'{app_name} - {os.path.basename(file_path)}')
 
     def play_video(self):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
