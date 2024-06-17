@@ -108,7 +108,7 @@ class MainWindow(QMainWindow):
         self.playBtn.setIconSize(QSize(25, 25))
         self.playBtn.clicked.connect(self.play_video)
         self.playBtn.setStyleSheet("margin: 20px 0 20px 20px;")
-        # Play/Stop button shortcut - 'Space'
+        # Play/Stop shortcut - 'Space'
         self.play_shortcut = QShortcut(Qt.Key_Space, self)
         self.play_shortcut.activated.connect(self.play_video)
 
@@ -119,6 +119,9 @@ class MainWindow(QMainWindow):
         self.replay10btn.setIconSize(QSize(25, 25))
         self.replay10btn.clicked.connect(lambda: self.rewind_media(10500))
         self.replay10btn.setStyleSheet("margin: 20px 0;")
+        # Replay 1 minute shortcut - 'Arrow Left'
+        self.replay_minute_shortcut = QShortcut(Qt.Key_Left, self)
+        self.replay_minute_shortcut.activated.connect(lambda: self.rewind_media(60500))
 
         # Forward 30 seconds button
         self.forward30btn = QPushButton()
@@ -127,6 +130,9 @@ class MainWindow(QMainWindow):
         self.forward30btn.setIconSize(QSize(25, 25))
         self.forward30btn.clicked.connect(lambda: self.forward_media(30000))
         self.forward30btn.setStyleSheet("margin: 20px 20px 20px 0;")
+        # Forward 1 minute shortcut - 'Arrow Right'
+        self.forward_minute_shortcut = QShortcut(Qt.Key_Right, self)
+        self.forward_minute_shortcut.activated.connect(lambda: self.forward_media(60000))
 
         # Position slider
         self.position_slider = QSlider(Qt.Horizontal)

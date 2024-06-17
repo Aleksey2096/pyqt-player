@@ -56,6 +56,8 @@ class MainWindow(QMainWindow):
         self.controls_layout = QHBoxLayout(self.controls_container)
         self.controls_layout.setContentsMargins(0, 0, 0, 0)
         self.controls_layout.addWidget(self.playBtn)
+        self.controls_layout.addWidget(self.replay10btn)
+        self.controls_layout.addWidget(self.forward30btn)
         self.controls_layout.addWidget(self.position_slider)
         self.controls_layout.addWidget(self.timeLabel)
         self.controls_layout.addWidget(self.volume_slider)
@@ -68,9 +70,6 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.container)
 
         self.mediaPlayer.setVideoOutput(self.videoWidget)
-        self.mediaPlayer.stateChanged.connect(self.playing_state_handler)
-        self.mediaPlayer.positionChanged.connect(self.position_handler)
-        self.mediaPlayer.durationChanged.connect(self.duration_handler)
 
         self.central_widget.setLayout(self.layout)
 
@@ -91,8 +90,10 @@ class MainWindow(QMainWindow):
 
         # Connect events
         self.resizeEvent = self.resize_event_handler
-        # self.container.enterEvent = self.enter_event_handler
         self.container.mousePressEvent = self.mouse_press_handler
+        self.mediaPlayer.stateChanged.connect(self.playing_state_handler)
+        self.mediaPlayer.positionChanged.connect(self.position_handler)
+        self.mediaPlayer.durationChanged.connect(self.duration_handler)
 
     def create_controls(self):
         # Open File button
@@ -106,10 +107,32 @@ class MainWindow(QMainWindow):
         self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
         self.playBtn.setIconSize(QSize(25, 25))
         self.playBtn.clicked.connect(self.play_video)
-        self.playBtn.setStyleSheet("margin: 20px;")
-        # Play/Stop button shortcut - 'Space'
+        self.playBtn.setStyleSheet("margin: 20px 0 20px 20px;")
+        # Play/Stop shortcut - 'Space'
         self.play_shortcut = QShortcut(Qt.Key_Space, self)
         self.play_shortcut.activated.connect(self.play_video)
+
+        # Replay 10 seconds button
+        self.replay10btn = QPushButton()
+        self.replay10btn.setEnabled(False)
+        self.replay10btn.setIcon(QIcon('img/replay_10.png'))
+        self.replay10btn.setIconSize(QSize(25, 25))
+        self.replay10btn.clicked.connect(lambda: self.rewind_media(10500))
+        self.replay10btn.setStyleSheet("margin: 20px 0;")
+        # Replay 1 minute shortcut - 'Arrow Left'
+        self.replay_minute_shortcut = QShortcut(Qt.Key_Left, self)
+        self.replay_minute_shortcut.activated.connect(lambda: self.rewind_media(60500))
+
+        # Forward 30 seconds button
+        self.forward30btn = QPushButton()
+        self.forward30btn.setEnabled(False)
+        self.forward30btn.setIcon(QIcon('img/forward_30.png'))
+        self.forward30btn.setIconSize(QSize(25, 25))
+        self.forward30btn.clicked.connect(lambda: self.forward_media(30000))
+        self.forward30btn.setStyleSheet("margin: 20px 20px 20px 0;")
+        # Forward 1 minute shortcut - 'Arrow Right'
+        self.forward_minute_shortcut = QShortcut(Qt.Key_Right, self)
+        self.forward_minute_shortcut.activated.connect(lambda: self.forward_media(60000))
 
         # Position slider
         self.position_slider = QSlider(Qt.Horizontal)
@@ -152,6 +175,8 @@ class MainWindow(QMainWindow):
         if fileName != '':
             self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(fileName)))
             self.playBtn.setEnabled(True)
+            self.replay10btn.setEnabled(True)
+            self.forward30btn.setEnabled(True)
             self.play_video()
             self.hide_controls()
 
@@ -222,6 +247,19 @@ class MainWindow(QMainWindow):
     def volume_handler(self, value):
         self.mediaPlayer.setVolume(value)
         self.volume_label.setText(f'{value}%')
+
+    def rewind_media(self, rewind_time):
+        current_position = self.mediaPlayer.position()
+        new_position = max(0, current_position - rewind_time)
+        self.mediaPlayer.setPosition(new_position)
+
+    def forward_media(self, forward_time):
+        current_position = self.mediaPlayer.position()
+        duration = self.mediaPlayer.duration()
+        new_position = current_position + forward_time
+        if new_position >= duration:
+            new_position = duration - 1000
+        self.mediaPlayer.setPosition(new_position)
 
 
 if __name__ == '__main__':
