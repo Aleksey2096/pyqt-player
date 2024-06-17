@@ -162,12 +162,18 @@ class MainWindow(QMainWindow):
         self.fullScreenBtn.clicked.connect(self.screen_mode_handler)
         self.fullScreenBtn.setStyleSheet("margin: 20px 0px 20px 20px;")
 
-        # Hide All Controls button
+        # Hide Controls button
         self.hideControlsBtn = QPushButton()
         self.hideControlsBtn.setIcon(QIcon('img/hide.png'))
         self.hideControlsBtn.setIconSize(QSize(20, 20))
         self.hideControlsBtn.clicked.connect(self.hide_controls)
         self.hideControlsBtn.setStyleSheet("margin: 20px;")
+        # Hide Controls shortcut - 'Arrow Down'
+        self.hide_controls_shortcut = QShortcut(Qt.Key_Down, self)
+        self.hide_controls_shortcut.activated.connect(self.hide_controls)
+        # Show Controls shortcut - 'Arrow Up'
+        self.show_controls_shortcut = QShortcut(Qt.Key_Up, self)
+        self.show_controls_shortcut.activated.connect(self.show_controls)
 
     def open_file(self):
         fileName, _ = QFileDialog.getOpenFileName(self, 'Open File')
