@@ -1,9 +1,11 @@
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QStyle, QSlider, QFileDialog, \
     QMainWindow, QLabel, QShortcut
-from PyQt5.QtGui import QIcon, QPalette, QKeySequence
+from PyQt5.QtGui import QIcon, QPixmap, QPalette, QKeySequence
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtCore import Qt, QUrl, QTimer, QSize
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, APIC
 import sys
 import os
 
@@ -51,17 +53,21 @@ class MainWindow(QMainWindow):
         self.init_player()
 
         if file_path:
-            self.open_file(file_path)
+            self.play_file(file_path)
 
     def init_player(self):
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
 
-        self.videoWidget = QVideoWidget()
-
         self.container = QWidget()
-        self.video_layout = QVBoxLayout(self.container)
-        self.video_layout.setContentsMargins(0, 0, 0, 0)
-        self.video_layout.addWidget(self.videoWidget)
+        self.media_layout = QVBoxLayout(self.container)
+        self.media_layout.setContentsMargins(0, 0, 0, 0)
+        # Widget to show output for video files
+        self.video_widget = QVideoWidget()
+        self.media_layout.addWidget(self.video_widget)
+        # Label to show output (album cover image) for music files
+        self.image_label = QLabel()
+        self.media_layout.addWidget(self.image_label)
+        self.image_label.setAlignment(Qt.AlignCenter)
 
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
@@ -86,7 +92,7 @@ class MainWindow(QMainWindow):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.addWidget(self.container)
 
-        self.mediaPlayer.setVideoOutput(self.videoWidget)
+        self.mediaPlayer.setVideoOutput(self.video_widget)
 
         self.central_widget.setLayout(self.layout)
 
@@ -121,13 +127,13 @@ class MainWindow(QMainWindow):
         # Play/Stop button
         self.playBtn = QPushButton()
         self.playBtn.setEnabled(False)
-        self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-        self.playBtn.setIconSize(QSize(25, 25))
-        self.playBtn.clicked.connect(self.play_video)
+        self.playBtn.setIcon(QIcon(resource_path('img/play.png')))
+        self.playBtn.setIconSize(QSize(30, 30))
+        self.playBtn.clicked.connect(self.play)
         self.playBtn.setStyleSheet("margin: 20px 0 20px 20px;")
         # Play/Stop shortcut - 'Space'
         self.play_shortcut = QShortcut(Qt.Key_Space, self)
-        self.play_shortcut.activated.connect(self.play_video)
+        self.play_shortcut.activated.connect(self.play)
 
         # Replay 10 seconds button
         self.replay10btn = QPushButton()
@@ -195,19 +201,40 @@ class MainWindow(QMainWindow):
     def find_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, 'Open File')
 
-        self.open_file(file_path)
+        self.play_file(file_path)
 
-    def open_file(self, file_path):
+    def play_file(self, file_path):
         if file_path != '':
             self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(file_path)))
-            self.playBtn.setEnabled(True)
-            self.replay10btn.setEnabled(True)
-            self.forward30btn.setEnabled(True)
-            self.play_video()
+            self.enable_controls()
+
+            if file_path.endswith('.mp3'):
+                self.image_label.show()
+                self.video_widget.hide()
+                self.display_album_cover(file_path)
+            else:
+                self.image_label.hide()
+                self.video_widget.show()
+
+            self.play()
             self.hide_controls()
             self.setWindowTitle(f'{app_name} - {os.path.basename(file_path)}')
 
-    def play_video(self):
+    def display_album_cover(self, file_path):
+        audio = MP3(file_path, ID3=ID3)
+        for tag in audio.tags.values():
+            if isinstance(tag, APIC):
+                pixmap = QPixmap()
+                pixmap.loadFromData(tag.data)
+                self.image_label.setPixmap(pixmap.scaled(500, 500, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                break
+
+    def enable_controls(self):
+        self.playBtn.setEnabled(True)
+        self.replay10btn.setEnabled(True)
+        self.forward30btn.setEnabled(True)
+
+    def play(self):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
             self.mediaPlayer.pause()
         else:
@@ -215,9 +242,9 @@ class MainWindow(QMainWindow):
 
     def playing_state_handler(self, state):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
-            self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
+            self.playBtn.setIcon(QIcon(resource_path('img/pause.png')))
         else:
-            self.playBtn.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+            self.playBtn.setIcon(QIcon(resource_path('img/play.png')))
 
     def position_handler(self, position):
         self.position_slider.setValue(position)
@@ -239,7 +266,6 @@ class MainWindow(QMainWindow):
     def show_controls(self):
         self.openBtn.show()
         self.controls_container.show()
-        # QTimer.singleShot(15000, self.hide_controls)
 
     def mouse_press_handler(self, event):
         QTimer.singleShot(100, self.show_controls)

@@ -1,74 +1,79 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QSlider, QLabel, QPushButton, QStyle, QHBoxLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QLabel, QVBoxLayout, QWidget,QSizePolicy
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt, QUrl
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, APIC
 
-class MainWindow(QMainWindow):
+class VideoPlayer(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.setWindowTitle("Video Player")
+        self.setGeometry(100, 100, 300, 300)
 
-        self.setWindowTitle("Volume Controller Example")
-        self.setGeometry(100, 100, 800, 600)
-
-        # Set up the media player
-        self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
+        # Central widget
+        self.central_widget = QWidget(self)
+        self.setCentralWidget(self.central_widget)
         
-        # Create video widget
-        self.videoWidget = QVideoWidget()
+        # Layout
+        self.layout = QVBoxLayout(self.central_widget)
         
-        # Create play button
-        self.playButton = QPushButton()
-        self.playButton.setEnabled(True)
-        self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-        self.playButton.clicked.connect(self.play_video)
-
-        # Create volume slider
-        self.volumeSlider = QSlider(Qt.Horizontal)
-        self.volumeSlider.setRange(0, 200)  # Set max volume to 200
-        self.volumeSlider.setValue(100)  # Default value at 100
-        self.volumeSlider.valueChanged.connect(self.set_volume)
-
-        # Create a label to show volume value
-        self.volumeLabel = QLabel("Volume: 100")
+        # Video Widget
+        self.video_widget = QVideoWidget(self)
+        self.layout.addWidget(self.video_widget)
         
-        # Create layout for controls
-        controlLayout = QHBoxLayout()
-        controlLayout.addWidget(self.playButton)
-        controlLayout.addWidget(self.volumeSlider)
-        controlLayout.addWidget(self.volumeLabel)
+        # Image Label
+        self.image_label = QLabel(self)
+        self.layout.addWidget(self.image_label)
+        self.image_label.setAlignment(Qt.AlignCenter)
 
-        # Create main layout
-        layout = QVBoxLayout()
-        layout.addWidget(self.videoWidget)
-        layout.addLayout(controlLayout)
+        self.image_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        # self.image_label.setScaledContents(True)  # This allows the label to scale the pixmap
+        
+        # Media Player
+        self.media_player = QMediaPlayer(self)
+        self.media_player.setVideoOutput(self.video_widget)
 
-        # Set the central widget
-        centralWidget = QWidget()
-        centralWidget.setLayout(layout)
-        self.setCentralWidget(centralWidget)
+        # Show File Dialog to open file
+        self.open_file_dialog()
 
-        # Set the media player output to the video widget
-        self.mediaPlayer.setVideoOutput(self.videoWidget)
+    def open_file_dialog(self):
+        file_dialog = QFileDialog(self)
+        file_dialog.setAcceptMode(QFileDialog.AcceptOpen)
+        file_dialog.setNameFilter("Media Files (*.mp4 *.mp3 *.avi *.mkv)")
+        if file_dialog.exec_() == QFileDialog.Accepted:
+            file_path = file_dialog.selectedFiles()[0]
+            self.load_media(file_path)
 
-        # Set a video source
-        self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile('D://My documents//Downloads//American.Pie.1999.1080p.BluRay.x264-[YTS.AG].mp4')))
-
-    def play_video(self):
-        if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
-            self.mediaPlayer.pause()
-            self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+    def load_media(self, file_path):
+        if file_path.endswith('.mp3'):
+            self.display_album_cover(file_path)
         else:
-            self.mediaPlayer.play()
-            self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPause))
+            self.play_video(file_path)
 
-    def set_volume(self, value):
-        self.mediaPlayer.setVolume(value)
-        self.volumeLabel.setText(f"Volume: {value}")
-        print(f"Volume changed to: {value}")
+    def play_video(self, file_path):
+        self.image_label.hide()
+        self.video_widget.show()
+        self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(file_path)))
+        self.media_player.play()
 
-if __name__ == '__main__':
+    def display_album_cover(self, file_path):
+        audio = MP3(file_path, ID3=ID3)
+        for tag in audio.tags.values():
+            if isinstance(tag, APIC):
+                pixmap = QPixmap()
+                pixmap.loadFromData(tag.data)
+                self.image_label.setPixmap(pixmap.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                self.image_label.show()
+                self.video_widget.hide()
+                self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(file_path)))
+                self.media_player.play()
+                break
+
+if __name__ == "__main__":
     app = QApplication(sys.argv)
-    main_window = MainWindow()
-    main_window.show()
+    player = VideoPlayer()
+    player.show()
     sys.exit(app.exec_())
