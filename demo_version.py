@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QStyle, QSlider, QFileDialog, \
-    QMainWindow, QLabel, QShortcut
-from PyQt5.QtGui import QIcon, QPixmap, QPalette, QKeySequence
+from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QStyle, QSlider, QFileDialog,
+                             QMainWindow, QLabel, QShortcut)
+from PyQt5.QtGui import QIcon, QPixmap, QPainter
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtCore import Qt, QUrl, QTimer, QSize
@@ -33,6 +33,26 @@ class VolumeSlider(QSlider):
             event.accept()
 
 
+# Custom label allows to resize image inside of it while keeping aspect ratio
+class ImageLabel(QLabel):
+    def __init__(self):
+        super().__init__()
+        self.pixmap = QPixmap()
+
+    def setPixmap(self, tag_data):
+        if not self.pixmap.loadFromData(tag_data):
+            print("Failed to load pixmap:", tag_data)
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        rect = self.rect()
+        if not self.pixmap.isNull():
+            scaled_pixmap = self.pixmap.scaled(rect.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            point = rect.center() - scaled_pixmap.rect().center()
+            painter.drawPixmap(point, scaled_pixmap)
+
+
 app_name = 'Alex MultiMedia'
 
 
@@ -45,7 +65,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(app_name)
         self.setGeometry(320, 180, 960, 540)
 
-        # self.setStyleSheet("background-color: black;")
+        self.setStyleSheet("background-color: black;")
         # palette = self.palette()
         # palette.setColor(QPalette.Window, Qt.black)
         # self.setPalette(palette)
@@ -65,7 +85,7 @@ class MainWindow(QMainWindow):
         self.video_widget = QVideoWidget()
         self.media_layout.addWidget(self.video_widget)
         # Label to show output (album cover image) for music files
-        self.image_label = QLabel()
+        self.image_label = ImageLabel()
         self.media_layout.addWidget(self.image_label)
         self.image_label.setAlignment(Qt.AlignCenter)
 
@@ -76,6 +96,7 @@ class MainWindow(QMainWindow):
 
         self.controls_container = QWidget(self.container)
         self.controls_container.setContentsMargins(0, 0, 0, 0)
+        self.controls_container.setStyleSheet("background-color: white;")
         self.controls_layout = QHBoxLayout(self.controls_container)
         self.controls_layout.setContentsMargins(0, 0, 0, 0)
         self.controls_layout.addWidget(self.playBtn)
@@ -105,7 +126,7 @@ class MainWindow(QMainWindow):
             }
         """)
 
-        # Create a timer to update the playback time label
+        # Timer to update the playback time label
         self.timer = QTimer(self)
         self.timer.setInterval(1000)  # update every second
         self.timer.timeout.connect(self.update_time_label)
@@ -122,6 +143,7 @@ class MainWindow(QMainWindow):
         # Open File button
         self.openBtn = QPushButton('    Open File', self.container)
         self.openBtn.setIcon(QIcon(resource_path('img/file_open.png')))
+        self.openBtn.setStyleSheet("background-color: white;")
         self.openBtn.clicked.connect(self.find_file)
 
         # Play/Stop button
@@ -169,12 +191,12 @@ class MainWindow(QMainWindow):
         # Volume slider
         self.volume_slider = VolumeSlider()
         self.volume_slider.setRange(0, 100)
-        self.volume_slider.setValue(50)
+        self.volume_slider.setValue(15)
         self.volume_slider.setFixedWidth(100)
         self.volume_slider.valueChanged.connect(self.volume_handler)
 
         # Volume label
-        self.volume_label = QLabel("50%", self)
+        self.volume_label = QLabel("15%", self)
         self.volume_label.setFixedWidth(56)
         self.volume_label.setStyleSheet("margin-left: 10px;")
 
@@ -199,7 +221,7 @@ class MainWindow(QMainWindow):
         self.show_controls_shortcut.activated.connect(self.show_controls)
 
     def find_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, 'Open File')
+        file_path, _ = QFileDialog.getOpenFileName(self, 'Open File', 'D:/My documents/Downloads')
 
         self.play_file(file_path)
 
@@ -224,9 +246,7 @@ class MainWindow(QMainWindow):
         audio = MP3(file_path, ID3=ID3)
         for tag in audio.tags.values():
             if isinstance(tag, APIC):
-                pixmap = QPixmap()
-                pixmap.loadFromData(tag.data)
-                self.image_label.setPixmap(pixmap.scaled(500, 500, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                self.image_label.setPixmap(tag.data)
                 break
 
     def enable_controls(self):
