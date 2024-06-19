@@ -1,7 +1,0 @@
-{
-    "editor.wordWrapColumn": 120,
-    "autopep8.args": [
-        "--max-line-length=120"
-    ],
-    "files.autoSave": "afterDelay"
-}
