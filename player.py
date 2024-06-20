@@ -28,7 +28,8 @@ class VolumeSlider(QSlider):
     def mousePressEvent(self, event):
         super(VolumeSlider, self).mousePressEvent(event)
         if event.button() == Qt.LeftButton:
-            value = QStyle.sliderValueFromPosition(self.minimum(), self.maximum(), event.x(), self.width())
+            value = QStyle.sliderValueFromPosition(
+                self.minimum(), self.maximum(), event.x(), self.width())
             self.setValue(value)
             event.accept()
 
@@ -48,12 +49,14 @@ class ImageLabel(QLabel):
         painter = QPainter(self)
         rect = self.rect()
         if not self.pixmap.isNull():
-            scaled_pixmap = self.pixmap.scaled(rect.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            scaled_pixmap = self.pixmap.scaled(
+                rect.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
             point = rect.center() - scaled_pixmap.rect().center()
             painter.drawPixmap(point, scaled_pixmap)
 
 
 app_name = 'Alex MultiMedia'
+initial_volume = 15
 
 
 class MainWindow(QMainWindow):
@@ -139,6 +142,9 @@ class MainWindow(QMainWindow):
         self.mediaPlayer.positionChanged.connect(self.position_handler)
         self.mediaPlayer.durationChanged.connect(self.duration_handler)
 
+        # Set player's initial volume
+        self.mediaPlayer.setVolume(initial_volume)
+
     def create_controls(self):
         # Open File button
         self.openBtn = QPushButton('    Open File', self.container)
@@ -166,7 +172,8 @@ class MainWindow(QMainWindow):
         self.replay10btn.setStyleSheet("margin: 20px 0;")
         # Replay 1 minute shortcut - 'Arrow Left'
         self.replay_minute_shortcut = QShortcut(Qt.Key_Left, self)
-        self.replay_minute_shortcut.activated.connect(lambda: self.rewind_media(60500))
+        self.replay_minute_shortcut.activated.connect(
+            lambda: self.rewind_media(60500))
 
         # Forward 30 seconds button
         self.forward30btn = QPushButton()
@@ -185,18 +192,18 @@ class MainWindow(QMainWindow):
         self.position_slider.sliderMoved.connect(self.set_position)
 
         # Position label
-        self.timeLabel = QLabel('00:00:00 / 00:00:00')
+        self.timeLabel = QLabel('0:00:00 / 0:00:00')
         self.timeLabel.setContentsMargins(10, 0, 20, 0)
 
         # Volume slider
         self.volume_slider = VolumeSlider()
         self.volume_slider.setRange(0, 100)
-        self.volume_slider.setValue(15)
+        self.volume_slider.setValue(initial_volume)
         self.volume_slider.setFixedWidth(100)
         self.volume_slider.valueChanged.connect(self.volume_handler)
 
         # Volume label
-        self.volume_label = QLabel("15%", self)
+        self.volume_label = QLabel(f'{initial_volume}%', self)
         self.volume_label.setFixedWidth(56)
         self.volume_label.setStyleSheet("margin-left: 10px;")
 
@@ -221,13 +228,15 @@ class MainWindow(QMainWindow):
         self.show_controls_shortcut.activated.connect(self.show_controls)
 
     def find_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, 'Open File', 'D:/My documents/Downloads')
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, 'Open File', 'D:/My documents/Downloads')
 
         self.play_file(file_path)
 
     def play_file(self, file_path):
         if file_path != '':
-            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(file_path)))
+            self.mediaPlayer.setMedia(
+                QMediaContent(QUrl.fromLocalFile(file_path)))
             self.enable_controls()
 
             if file_path.endswith('.mp3'):
@@ -277,7 +286,8 @@ class MainWindow(QMainWindow):
         self.mediaPlayer.setPosition(position)
 
     def resize_event_handler(self, event):
-        self.controls_container.setGeometry(20, self.height() - 45, self.width() - 40, 30)
+        self.controls_container.setGeometry(
+            20, self.height() - 45, self.width() - 40, 30)
 
     def hide_controls(self):
         self.openBtn.hide()
@@ -293,14 +303,15 @@ class MainWindow(QMainWindow):
     def update_time_label(self):
         current_time = self.mediaPlayer.position()
         total_time = self.mediaPlayer.duration()
-        formatted_time = f'{self.format_time(current_time)} / {self.format_time(total_time)}'
+        formatted_time = f'{self.format_time(
+            current_time)} / {self.format_time(total_time)}'
         self.timeLabel.setText(formatted_time)
 
     def format_time(self, ms):
         seconds = (ms / 1000) % 60
         minutes = (ms / (1000 * 60)) % 60
         hours = (ms / (1000 * 60 * 60)) % 24
-        return "%02d:%02d:%02d" % (hours, minutes, seconds)
+        return "%01d:%02d:%02d" % (hours, minutes, seconds)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_F11:
@@ -312,10 +323,12 @@ class MainWindow(QMainWindow):
     def screen_mode_handler(self):
         if self.isFullScreen():
             self.showNormal()
-            self.fullScreenBtn.setIcon(QIcon(resource_path('img/fullscreen.png')))
+            self.fullScreenBtn.setIcon(
+                QIcon(resource_path('img/fullscreen.png')))
         else:
             self.showFullScreen()
-            self.fullScreenBtn.setIcon(QIcon(resource_path('img/fullscreen_exit.png')))
+            self.fullScreenBtn.setIcon(
+                QIcon(resource_path('img/fullscreen_exit.png')))
 
     def volume_handler(self, value):
         self.mediaPlayer.setVolume(value)

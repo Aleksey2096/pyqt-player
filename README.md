@@ -1,6 +1,6 @@
 # Simple PyQt5 Multimedia Player
 
-### Create executable file from 'final' directory
+### Create executable file from root directory
 ```
 $ pyinstaller player.spec
 ```
