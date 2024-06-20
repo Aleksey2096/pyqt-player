@@ -84,6 +84,9 @@ class MainWindow(QMainWindow):
 
         self.init_player()
 
+        # Window flags to always stay on top
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+
         if file_path:
             self.play_file(file_path)
 
