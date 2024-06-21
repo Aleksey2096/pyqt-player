@@ -76,25 +76,30 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(resource_path('img/app_icon.ico')))
         self.setWindowTitle(app_name)
         self.setGeometry(320, 180, 960, 540)
-
-        self.setStyleSheet("background-color: black;")
-        # palette = self.palette()
-        # palette.setColor(QPalette.Window, Qt.black)
-        # self.setPalette(palette)
-
-        self.init_player()
-
-        # Window flags to always stay on top
+        self.setStyleSheet("""
+            * { 
+                background-color: black;
+            }
+            QLabel {
+                font-size: 16px;
+            }
+            QPushButton {
+                font-size: 11px;
+            }
+        """)
+        # Window flags which allow this app's window to always stay on top of other windows
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+
+        self.build_player()
 
         if file_path:
             self.play_file(file_path)
 
-    def init_player(self):
-        self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
+    def build_player(self):
+        self.central_widget = QWidget(self)
+        self.setCentralWidget(self.central_widget)
 
-        self.container = QWidget()
-        self.media_layout = QVBoxLayout(self.container)
+        self.media_layout = QVBoxLayout(self.central_widget)
         self.media_layout.setContentsMargins(0, 0, 0, 0)
         # Widget to show output for video files
         self.video_widget = QVideoWidget()
@@ -104,13 +109,9 @@ class MainWindow(QMainWindow):
         self.media_layout.addWidget(self.image_label)
         self.image_label.setAlignment(Qt.AlignCenter)
 
-        self.central_widget = QWidget(self)
-        self.setCentralWidget(self.central_widget)
-
         self.create_controls()
 
-        self.controls_container = QWidget(self.container)
-        self.controls_container.setContentsMargins(0, 0, 0, 0)
+        self.controls_container = QWidget(self.central_widget)
         self.controls_container.setStyleSheet("background-color: white;")
         self.controls_layout = QHBoxLayout(self.controls_container)
         self.controls_layout.setContentsMargins(0, 0, 0, 0)
@@ -124,22 +125,8 @@ class MainWindow(QMainWindow):
         self.controls_layout.addWidget(self.fullScreenBtn)
         self.controls_layout.addWidget(self.hideControlsBtn)
 
-        self.layout = QVBoxLayout()
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.addWidget(self.container)
-
+        self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
         self.mediaPlayer.setVideoOutput(self.video_widget)
-
-        self.central_widget.setLayout(self.layout)
-
-        self.central_widget.setStyleSheet("""
-            QLabel {
-                font-size: 16px;
-            }
-            QPushButton {
-                font-size: 11px;
-            }
-        """)
 
         # Timer to update the playback time label
         self.timer = QTimer(self)
@@ -149,7 +136,7 @@ class MainWindow(QMainWindow):
 
         # Connect events
         self.resizeEvent = self.resize_event_handler
-        self.container.mousePressEvent = self.mouse_press_handler
+        self.central_widget.mousePressEvent = self.mouse_press_handler
         self.mediaPlayer.stateChanged.connect(self.playing_state_handler)
         self.mediaPlayer.positionChanged.connect(self.position_handler)
         self.mediaPlayer.durationChanged.connect(self.duration_handler)
@@ -159,7 +146,7 @@ class MainWindow(QMainWindow):
 
     def create_controls(self):
         # Open File button
-        self.openBtn = QPushButton('    Open File', self.container)
+        self.openBtn = QPushButton('    Open File', self.central_widget)
         self.openBtn.setIcon(QIcon(resource_path('img/file_open.png')))
         self.openBtn.setStyleSheet("background-color: white;")
         self.openBtn.clicked.connect(self.find_file)
@@ -245,8 +232,7 @@ class MainWindow(QMainWindow):
 
     def play_file(self, file_path):
         if file_path != '':
-            self.mediaPlayer.setMedia(
-                QMediaContent(QUrl.fromLocalFile(file_path)))
+            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(file_path)))
             self.enable_controls()
 
             if file_path.endswith(('.mp3', '.m4a', '.flac')):
