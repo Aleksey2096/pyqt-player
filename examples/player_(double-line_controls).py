@@ -126,8 +126,6 @@ class MainWindow(QMainWindow):
         self.lower_controls_layout.addStretch()
         self.lower_controls_layout.addWidget(self.volume_slider)
         self.lower_controls_layout.addWidget(self.volume_label)
-        self.lower_controls_layout.addWidget(self.fullScreenBtn)
-        self.lower_controls_layout.addWidget(self.hideControlsBtn)
         self.controls_layout.addLayout(self.upper_controls_layout)
         self.controls_layout.addLayout(self.lower_controls_layout)
 
@@ -208,22 +206,9 @@ class MainWindow(QMainWindow):
 
         # Volume label
         self.volume_label = QLabel(f'{initial_volume}%', self)
-        self.volume_label.setFixedWidth(69)
-        self.volume_label.setStyleSheet("margin: 10px;")
+        self.volume_label.setFixedWidth(80)
+        self.volume_label.setStyleSheet("margin: 10px 20px 10px 10px;")
 
-        # FullScreen mode button
-        self.fullScreenBtn = QPushButton()
-        self.fullScreenBtn.setIcon(QIcon(resource_path('img/fullscreen.png')))
-        self.fullScreenBtn.setIconSize(QSize(20, 20))
-        self.fullScreenBtn.clicked.connect(self.screen_mode_handler)
-        self.fullScreenBtn.setStyleSheet("margin: 20px 0px 20px 0px;")
-
-        # Hide Controls button
-        self.hideControlsBtn = QPushButton()
-        self.hideControlsBtn.setIcon(QIcon(resource_path('img/hide.png')))
-        self.hideControlsBtn.setIconSize(QSize(20, 20))
-        self.hideControlsBtn.clicked.connect(self.hide_controls)
-        self.hideControlsBtn.setStyleSheet("margin: 20px 20px 20px 15px;")
         # Hide Controls shortcut - 'Arrow Down'
         self.hide_controls_shortcut = QShortcut(Qt.Key_Down, self)
         self.hide_controls_shortcut.activated.connect(self.hide_controls)
@@ -336,10 +321,8 @@ class MainWindow(QMainWindow):
     def screen_mode_handler(self):
         if self.isFullScreen():
             self.showNormal()
-            self.fullScreenBtn.setIcon(QIcon(resource_path('img/fullscreen.png')))
         else:
             self.showFullScreen()
-            self.fullScreenBtn.setIcon(QIcon(resource_path('img/fullscreen_exit.png')))
 
     def volume_handler(self, value):
         self.mediaPlayer.setVolume(value)
