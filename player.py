@@ -110,33 +110,23 @@ class MainWindow(QMainWindow):
         self.image_label.setAlignment(Qt.AlignCenter)
 
         self.create_controls()
-
-        self.controls_container = QWidget(self.central_widget)
-        self.controls_container.setStyleSheet("background-color: white;")
-        self.controls_layout = QHBoxLayout(self.controls_container)
-        self.controls_layout.setContentsMargins(0, 0, 0, 0)
-        self.controls_layout.addWidget(self.playBtn)
-        self.controls_layout.addWidget(self.replay10btn)
-        self.controls_layout.addWidget(self.forward30btn)
-        self.controls_layout.addWidget(self.position_slider)
-        self.controls_layout.addWidget(self.timeLabel)
-        self.controls_layout.addWidget(self.volume_slider)
-        self.controls_layout.addWidget(self.volume_label)
-        self.controls_layout.addWidget(self.fullScreenBtn)
-        self.controls_layout.addWidget(self.hideControlsBtn)
+        self.create_shortcuts()
 
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
         self.mediaPlayer.setVideoOutput(self.video_widget)
 
         # Timer to update the playback time label
-        self.timer = QTimer(self)
-        self.timer.setInterval(1000)  # update every second
-        self.timer.timeout.connect(self.update_time_label)
-        self.timer.start()
+        self.playback_time_timer = QTimer(self)
+        self.playback_time_timer.setInterval(1000)  # update every second
+        self.playback_time_timer.timeout.connect(self.update_time_label)
+        self.playback_time_timer.start()
+
+        # Timer to distinguish single and double clicks
+        self.click_detection_timer = QTimer()
+        self.click_detection_timer.setSingleShot(True)
+        self.click_detection_timer.timeout.connect(self.single_click_handler)
 
         # Connect events
-        self.resizeEvent = self.resize_event_handler
-        self.central_widget.mousePressEvent = self.mouse_press_handler
         self.mediaPlayer.stateChanged.connect(self.playing_state_handler)
         self.mediaPlayer.positionChanged.connect(self.position_handler)
         self.mediaPlayer.durationChanged.connect(self.duration_handler)
@@ -157,10 +147,7 @@ class MainWindow(QMainWindow):
         self.playBtn.setIcon(QIcon(resource_path('img/play.png')))
         self.playBtn.setIconSize(QSize(30, 30))
         self.playBtn.clicked.connect(self.play)
-        self.playBtn.setStyleSheet("margin: 20px 0 20px 20px;")
-        # Play/Stop shortcut - 'Space'
-        self.play_shortcut = QShortcut(Qt.Key_Space, self)
-        self.play_shortcut.activated.connect(self.play)
+        self.playBtn.setStyleSheet("margin: 20px 0 20px 15px;")
 
         # Replay 10 seconds button
         self.replay10btn = QPushButton()
@@ -169,9 +156,6 @@ class MainWindow(QMainWindow):
         self.replay10btn.setIconSize(QSize(25, 25))
         self.replay10btn.clicked.connect(lambda: self.rewind_media(10500))
         self.replay10btn.setStyleSheet("margin: 20px 0;")
-        # Replay 1 minute shortcut - 'Arrow Left'
-        self.replay_minute_shortcut = QShortcut(Qt.Key_Left, self)
-        self.replay_minute_shortcut.activated.connect(lambda: self.rewind_media(60500))
 
         # Forward 30 seconds button
         self.forward30btn = QPushButton()
@@ -180,9 +164,6 @@ class MainWindow(QMainWindow):
         self.forward30btn.setIconSize(QSize(25, 25))
         self.forward30btn.clicked.connect(lambda: self.forward_media(30000))
         self.forward30btn.setStyleSheet("margin: 20px 20px 20px 0;")
-        # Forward 1 minute shortcut - 'Arrow Right'
-        self.forward_minute_shortcut = QShortcut(Qt.Key_Right, self)
-        self.forward_minute_shortcut.activated.connect(lambda: self.forward_media(60000))
 
         # Position slider
         self.position_slider = QSlider(Qt.Horizontal)
@@ -197,27 +178,39 @@ class MainWindow(QMainWindow):
         self.volume_slider = VolumeSlider()
         self.volume_slider.setRange(0, 100)
         self.volume_slider.setValue(initial_volume)
-        self.volume_slider.setFixedWidth(100)
+        self.volume_slider.setMaximumWidth(100)
         self.volume_slider.valueChanged.connect(self.volume_handler)
 
         # Volume label
         self.volume_label = QLabel(f'{initial_volume}%', self)
-        self.volume_label.setFixedWidth(56)
-        self.volume_label.setStyleSheet("margin-left: 10px;")
+        self.volume_label.setFixedWidth(76)
+        self.volume_label.setStyleSheet("margin: 0 20px 0 10px;")
 
-        # FullScreen mode button
-        self.fullScreenBtn = QPushButton()
-        self.fullScreenBtn.setIcon(QIcon(resource_path('img/fullscreen.png')))
-        self.fullScreenBtn.setIconSize(QSize(20, 20))
-        self.fullScreenBtn.clicked.connect(self.screen_mode_handler)
-        self.fullScreenBtn.setStyleSheet("margin: 20px 0px 20px 20px;")
+        self.controls_container = QWidget(self.central_widget)
+        self.controls_container.setStyleSheet("background-color: white;")
+        self.controls_layout = QHBoxLayout(self.controls_container)
+        self.controls_layout.setContentsMargins(0, 0, 0, 0)
+        self.controls_layout.addWidget(self.playBtn)
+        self.controls_layout.addWidget(self.replay10btn)
+        self.controls_layout.addWidget(self.forward30btn)
+        self.controls_layout.addWidget(self.position_slider)
+        self.controls_layout.addWidget(self.timeLabel)
+        self.controls_layout.addWidget(self.volume_slider)
+        self.controls_layout.addWidget(self.volume_label)
 
-        # Hide Controls button
-        self.hideControlsBtn = QPushButton()
-        self.hideControlsBtn.setIcon(QIcon(resource_path('img/hide.png')))
-        self.hideControlsBtn.setIconSize(QSize(20, 20))
-        self.hideControlsBtn.clicked.connect(self.hide_controls)
-        self.hideControlsBtn.setStyleSheet("margin: 20px;")
+    def create_shortcuts(self):
+        # Play/Stop shortcut - 'Space'
+        self.play_shortcut = QShortcut(Qt.Key_Space, self)
+        self.play_shortcut.activated.connect(self.play)
+
+        # Replay 1 minute shortcut - 'Arrow Left'
+        self.replay_minute_shortcut = QShortcut(Qt.Key_Left, self)
+        self.replay_minute_shortcut.activated.connect(lambda: self.rewind_media(60500))
+
+        # Forward 1 minute shortcut - 'Arrow Right'
+        self.forward_minute_shortcut = QShortcut(Qt.Key_Right, self)
+        self.forward_minute_shortcut.activated.connect(lambda: self.forward_media(60000))
+
         # Hide Controls shortcut - 'Arrow Down'
         self.hide_controls_shortcut = QShortcut(Qt.Key_Down, self)
         self.hide_controls_shortcut.activated.connect(self.hide_controls)
@@ -294,9 +287,6 @@ class MainWindow(QMainWindow):
     def set_position(self, position):
         self.mediaPlayer.setPosition(position)
 
-    def resize_event_handler(self, event):
-        self.controls_container.setGeometry(20, self.height() - 45, self.width() - 40, 30)
-
     def hide_controls(self):
         self.openBtn.hide()
         self.controls_container.hide()
@@ -304,9 +294,6 @@ class MainWindow(QMainWindow):
     def show_controls(self):
         self.openBtn.show()
         self.controls_container.show()
-
-    def mouse_press_handler(self, event):
-        QTimer.singleShot(100, self.show_controls)
 
     def update_time_label(self):
         current_time = self.mediaPlayer.position()
@@ -320,20 +307,12 @@ class MainWindow(QMainWindow):
         hours = (ms / (1000 * 60 * 60)) % 24
         return "%01d:%02d:%02d" % (hours, minutes, seconds)
 
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_F11:
-            self.screen_mode_handler()
-        elif event.key() == Qt.Key_Escape and self.isFullScreen():
-            self.showMaximized()
-
     # toggle between normal and full-screen mode
     def screen_mode_handler(self):
         if self.isFullScreen():
             self.showNormal()
-            self.fullScreenBtn.setIcon(QIcon(resource_path('img/fullscreen.png')))
         else:
             self.showFullScreen()
-            self.fullScreenBtn.setIcon(QIcon(resource_path('img/fullscreen_exit.png')))
 
     def volume_handler(self, value):
         self.mediaPlayer.setVolume(value)
@@ -351,6 +330,35 @@ class MainWindow(QMainWindow):
         if new_position >= duration:
             new_position = duration - 1000
         self.mediaPlayer.setPosition(new_position)
+
+    # toggle between hidden and visible controls
+    def single_click_handler(self):
+        if not self.controls_container.isVisible():
+            self.show_controls()
+        else:
+            self.hide_controls()
+
+    # implementations of the parent methods ↓
+
+    def mousePressEvent(self, event):
+        # Starts the timer on mouse press
+        if not self.click_detection_timer.isActive():
+            self.click_detection_timer.start(200)  # 200 ms delay to differentiate single click from double click
+
+    def mouseDoubleClickEvent(self, event):
+        # Stops the single click timer if a double click is detected
+        if self.click_detection_timer.isActive():
+            self.click_detection_timer.stop()
+        self.screen_mode_handler()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_F11:
+            self.screen_mode_handler()
+        elif event.key() == Qt.Key_Escape and self.isFullScreen():
+            self.showMaximized()
+
+    def resizeEvent(self, event):
+        self.controls_container.setGeometry(20, self.height() - 45, self.width() - 40, 30)
 
 
 if __name__ == '__main__':
