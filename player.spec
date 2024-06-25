@@ -24,7 +24,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='player',
+    name='Alex_MultiMedia',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

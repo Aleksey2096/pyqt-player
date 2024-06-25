@@ -324,7 +324,7 @@ class MainWindow(QMainWindow):
                 if cover.imageformat == MP4Cover.FORMAT_JPEG or cover.imageformat == MP4Cover.FORMAT_PNG:
                     self.image_label.setPixmap(cover)
                     return
-        self.image_label.setPixmapPath(default_album_cover_path)
+        self.image_label.setPixmapPath(resource_path(default_album_cover_path))
 
     def enable_controls(self):
         self.play_btn_1.setEnabled(True)
