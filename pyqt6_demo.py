@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
-from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtCore import Qt, QUrl, QTimer
 from PyQt6.QtGui import QCloseEvent
 
 class MediaPlayer(QMainWindow):
@@ -32,6 +32,11 @@ class MediaPlayer(QMainWindow):
         self.volume_slider.setRange(0, 100)
         self.volume_slider.setValue(50)
 
+        # Progress slider
+        self.progress_slider = QSlider(Qt.Orientation.Horizontal)
+        self.progress_slider.setRange(0, 100)
+        self.progress_slider.sliderMoved.connect(self.seek_position)
+
         # Set up layout
         control_layout = QHBoxLayout()
         control_layout.addWidget(self.open_button)
@@ -42,6 +47,7 @@ class MediaPlayer(QMainWindow):
 
         layout = QVBoxLayout()
         layout.addWidget(self.video_widget)  # Add the video widget to the layout
+        layout.addWidget(self.progress_slider)  # Add the progress slider to the layout
         layout.addLayout(control_layout)
 
         container = QWidget()
@@ -53,6 +59,8 @@ class MediaPlayer(QMainWindow):
         self.play_button.clicked.connect(self.play_media)
         self.stop_button.clicked.connect(self.stop_media)
         self.volume_slider.valueChanged.connect(self.set_volume)
+        self.player.positionChanged.connect(self.update_position)
+        self.player.durationChanged.connect(self.update_duration)
 
         # Load playback positions
         self.app_data_dir = os.path.join(os.getenv('LOCALAPPDATA'), 'PyQt6MediaPlayer')
@@ -86,6 +94,16 @@ class MediaPlayer(QMainWindow):
 
     def set_volume(self, value):
         self.audio_output.setVolume(value / 100)
+
+    def update_position(self, position):
+        if self.player.duration() > 0:
+            self.progress_slider.setValue(position)
+
+    def update_duration(self, duration):
+        self.progress_slider.setRange(0, duration)
+
+    def seek_position(self, position):
+        self.player.setPosition(position)
 
     def save_playback_position(self):
         if self.current_file_path:
