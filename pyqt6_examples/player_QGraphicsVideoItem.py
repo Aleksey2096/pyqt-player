@@ -59,10 +59,9 @@ class ControlsBar(QWidget):
         self.progress_slider = QSlider(Qt.Orientation.Horizontal)
         self.progress_slider.setRange(0, 100)
 
-        # Play/Pause/Restart button
+        # Play/Pause button
         self.play_icon = QIcon(resource_path('img/play.png'))
         self.pause_icon = QIcon(resource_path('img/pause.png'))
-        self.restart_icon = QIcon(resource_path('img/restart.png'))
         self.play_button = QPushButton()
         self.play_button.setIcon(self.play_icon)
         self.play_button.setIconSize(button_icon_size)
