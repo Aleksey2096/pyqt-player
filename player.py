@@ -63,6 +63,7 @@ class ImageLabel(QLabel):
 # app constants
 app_name = 'Alex MultiMedia'
 initial_volume = 15
+button_icon_size = QSize(25, 25)
 initial_dir = 'D:/My documents/Downloads'
 file_filter = "Video and Music Files (*.mp4 *.avi *.mkv *.wmv *.mp3 *.flac *.m4a)"
 default_album_cover_path = 'img/default_album_cover.jpg'
@@ -84,7 +85,7 @@ class MainWindow(QMainWindow):
                 font-size: 16px;
             }
             QPushButton {
-                font-size: 11px;
+                border: none;
             }
         """)
         # Window flags which allow this app's window to always stay on top of other windows
@@ -135,68 +136,80 @@ class MainWindow(QMainWindow):
         self.mediaPlayer.setVolume(initial_volume)
 
     def create_controls(self):
-        # Open File button
-        self.openBtn = QPushButton('    Open File', self.central_widget)
-        self.openBtn.setIcon(QIcon(resource_path('img/file_open.png')))
-        self.openBtn.setStyleSheet("background-color: white;")
-        self.openBtn.clicked.connect(self.find_file)
+        # Progress slider
+        self.progress_slider = QSlider(Qt.Horizontal)
+        self.progress_slider.setRange(0, 0)
+        self.progress_slider.sliderMoved.connect(self.set_position)
 
-        # Play/Stop button
-        self.playBtn = QPushButton()
-        self.playBtn.setEnabled(False)
-        self.playBtn.setIcon(QIcon(resource_path('img/play.png')))
-        self.playBtn.setIconSize(QSize(30, 30))
-        self.playBtn.clicked.connect(self.play)
-        self.playBtn.setStyleSheet("margin: 20px 0 20px 15px;")
+        # Play/Pause/Restart button
+        self.play_icon = QIcon(resource_path('img/play.png'))
+        self.pause_icon = QIcon(resource_path('img/pause.png'))
+        self.restart_icon = QIcon(resource_path('img/restart.png'))
+        self.play_button = QPushButton()
+        self.play_button.setEnabled(False)
+        self.play_button.setIcon(self.play_icon)
+        self.play_button.setIconSize(button_icon_size)
+        self.play_button.clicked.connect(self.play)
 
         # Replay 10 seconds button
-        self.replay10btn = QPushButton()
-        self.replay10btn.setEnabled(False)
-        self.replay10btn.setIcon(QIcon(resource_path('img/replay_10.png')))
-        self.replay10btn.setIconSize(QSize(25, 25))
-        self.replay10btn.clicked.connect(lambda: self.rewind_media(10500))
-        self.replay10btn.setStyleSheet("margin: 20px 0;")
+        self.replay_10_button = QPushButton()
+        self.replay_10_button.setEnabled(False)
+        self.replay_10_button.setIcon(QIcon(resource_path('img/replay10.png')))
+        self.replay_10_button.setIconSize(button_icon_size)
+        self.replay_10_button.clicked.connect(lambda: self.rewind_media(10500))
 
         # Forward 30 seconds button
-        self.forward30btn = QPushButton()
-        self.forward30btn.setEnabled(False)
-        self.forward30btn.setIcon(QIcon(resource_path('img/forward_30.png')))
-        self.forward30btn.setIconSize(QSize(25, 25))
-        self.forward30btn.clicked.connect(lambda: self.forward_media(30000))
-        self.forward30btn.setStyleSheet("margin: 20px 20px 20px 0;")
+        self.forward_30_button = QPushButton()
+        self.forward_30_button.setEnabled(False)
+        self.forward_30_button.setIcon(QIcon(resource_path('img/forward30.png')))
+        self.forward_30_button.setIconSize(button_icon_size)
+        self.forward_30_button.clicked.connect(lambda: self.forward_media(30000))
 
-        # Position slider
-        self.position_slider = QSlider(Qt.Horizontal)
-        self.position_slider.setRange(0, 0)
-        self.position_slider.sliderMoved.connect(self.set_position)
-
-        # Position label
-        self.timeLabel = QLabel('0:00:00 / 0:00:00')
-        self.timeLabel.setContentsMargins(10, 0, 20, 0)
+        # Volume/Mute button
+        self.volume_icon = QIcon(resource_path('img/volume.png'))
+        self.mute_icon = QIcon(resource_path('img/mute.png'))
+        self.volume_button = QPushButton()
+        self.volume_button.setIcon(self.volume_icon)
+        self.volume_button.setIconSize(button_icon_size)
 
         # Volume slider
         self.volume_slider = VolumeSlider()
         self.volume_slider.setRange(0, 100)
         self.volume_slider.setValue(initial_volume)
-        self.volume_slider.setMaximumWidth(100)
+        self.volume_slider.setMaximumWidth(130)
         self.volume_slider.valueChanged.connect(self.volume_handler)
 
-        # Volume label
-        self.volume_label = QLabel(f'{initial_volume}%', self)
-        self.volume_label.setFixedWidth(76)
-        self.volume_label.setStyleSheet("margin: 0 20px 0 10px;")
+        # Progress label
+        self.progress_label = QLabel('0:00:00 / 0:00:00')
 
-        self.controls_container = QWidget(self.central_widget)
-        self.controls_container.setStyleSheet("background-color: white;")
-        self.controls_layout = QHBoxLayout(self.controls_container)
-        self.controls_layout.setContentsMargins(0, 0, 0, 0)
-        self.controls_layout.addWidget(self.playBtn)
-        self.controls_layout.addWidget(self.replay10btn)
-        self.controls_layout.addWidget(self.forward30btn)
-        self.controls_layout.addWidget(self.position_slider)
-        self.controls_layout.addWidget(self.timeLabel)
-        self.controls_layout.addWidget(self.volume_slider)
-        self.controls_layout.addWidget(self.volume_label)
+        # Open File button
+        self.open_button = QPushButton()
+        self.open_button.setIcon(QIcon(resource_path('img/openFile.png')))
+        self.open_button.setIconSize(button_icon_size)
+        self.open_button.clicked.connect(self.open_file)
+
+        # Sets cursor to "pointer" for each control
+        controls = [self.progress_slider, self.play_button, self.replay_10_button,
+                    self.forward_30_button, self.volume_button, self.volume_slider, self.open_button]
+        for control in controls:
+            control.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        self.controls_bar = QWidget(self.central_widget)
+        self.controls_bar.setStyleSheet("background-color: white;")
+
+        self.lower_layout = QHBoxLayout()
+        self.lower_layout.addWidget(self.play_button)
+        self.lower_layout.addWidget(self.replay_10_button)
+        self.lower_layout.addWidget(self.forward_30_button)
+        self.lower_layout.addWidget(self.volume_button)
+        self.lower_layout.addWidget(self.volume_slider)
+        self.lower_layout.addStretch()
+        self.lower_layout.addWidget(self.progress_label)
+        self.lower_layout.addWidget(self.open_button)
+
+        self.controls_layout = QVBoxLayout(self.controls_bar)
+        self.controls_layout.addWidget(self.progress_slider)
+        self.controls_layout.addLayout(self.lower_layout)
 
     def create_shortcuts(self):
         # Play/Stop shortcut - 'Space'
@@ -218,7 +231,7 @@ class MainWindow(QMainWindow):
         self.show_controls_shortcut = QShortcut(Qt.Key_Up, self)
         self.show_controls_shortcut.activated.connect(self.show_controls)
 
-    def find_file(self):
+    def open_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, 'Open File', initial_dir, file_filter)
 
         self.play_file(file_path)
@@ -261,9 +274,9 @@ class MainWindow(QMainWindow):
         self.image_label.setPixmapPath(resource_path(default_album_cover_path))
 
     def enable_controls(self):
-        self.playBtn.setEnabled(True)
-        self.replay10btn.setEnabled(True)
-        self.forward30btn.setEnabled(True)
+        self.play_button.setEnabled(True)
+        self.replay_10_button.setEnabled(True)
+        self.forward_30_button.setEnabled(True)
 
     def play(self):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
@@ -273,33 +286,33 @@ class MainWindow(QMainWindow):
 
     def playing_state_handler(self, state):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
-            self.playBtn.setIcon(QIcon(resource_path('img/pause.png')))
+            self.play_button.setIcon(self.pause_icon)
         else:
-            self.playBtn.setIcon(QIcon(resource_path('img/play.png')))
+            self.play_button.setIcon(self.play_icon)
 
     def position_handler(self, position):
-        self.position_slider.setValue(position)
+        self.progress_slider.setValue(position)
         self.update_time_label()
 
     def duration_handler(self, duration):
-        self.position_slider.setRange(0, duration)
+        self.progress_slider.setRange(0, duration)
 
     def set_position(self, position):
         self.mediaPlayer.setPosition(position)
 
     def hide_controls(self):
-        self.openBtn.hide()
-        self.controls_container.hide()
+        self.open_button.hide()
+        self.controls_bar.hide()
 
     def show_controls(self):
-        self.openBtn.show()
-        self.controls_container.show()
+        self.open_button.show()
+        self.controls_bar.show()
 
     def update_time_label(self):
         current_time = self.mediaPlayer.position()
         total_time = self.mediaPlayer.duration()
         formatted_time = f'{self.format_time(current_time)} / {self.format_time(total_time)}'
-        self.timeLabel.setText(formatted_time)
+        self.progress_label.setText(formatted_time)
 
     def format_time(self, ms):
         seconds = (ms / 1000) % 60
@@ -316,7 +329,6 @@ class MainWindow(QMainWindow):
 
     def volume_handler(self, value):
         self.mediaPlayer.setVolume(value)
-        self.volume_label.setText(f'{value}%')
 
     def rewind_media(self, rewind_time):
         current_position = self.mediaPlayer.position()
@@ -333,7 +345,7 @@ class MainWindow(QMainWindow):
 
     # toggle between hidden and visible controls
     def single_click_handler(self):
-        if not self.controls_container.isVisible():
+        if not self.controls_bar.isVisible():
             self.show_controls()
         else:
             self.hide_controls()
@@ -358,7 +370,7 @@ class MainWindow(QMainWindow):
             self.showMaximized()
 
     def resizeEvent(self, event):
-        self.controls_container.setGeometry(20, self.height() - 45, self.width() - 40, 30)
+        self.controls_bar.setGeometry(15, self.height() - 90, self.width() - 30, 75)
 
 
 if __name__ == '__main__':
