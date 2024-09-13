@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QStyle, QSlider, QFileDialog,
-                             QMainWindow, QLabel, QShortcut)
+                             QMainWindow, QLabel, QShortcut, QSizePolicy)
 from PyQt5.QtGui import QIcon, QPixmap, QPainter
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5.QtCore import Qt, QUrl, QTimer, QSize
+from PyQt5.QtCore import Qt, QUrl, QTimer, QSize, QEvent
 from mutagen.mp3 import MP3
 from mutagen.mp4 import MP4, MP4Cover
 from mutagen.flac import FLAC
@@ -60,6 +60,47 @@ class ImageLabel(QLabel):
             painter.drawPixmap(point, scaled_pixmap)
 
 
+# Custom widget allows to control volume and hide volume slider when it's not needed
+class VolumeWidget(QWidget):
+    def __init__(self, mute_handler, volume_handler):
+        super().__init__()
+
+        # Volume/Mute button
+        self.volume_icon = QIcon(resource_path('img/volume.png'))
+        self.mute_icon = QIcon(resource_path('img/mute.png'))
+        self.volume_button = QPushButton()
+        self.volume_button.setIcon(self.volume_icon)
+        self.volume_button.setIconSize(button_icon_size)
+        self.volume_button.setFixedSize(self.volume_button.iconSize())
+        self.volume_button.clicked.connect(mute_handler)
+
+        # Volume slider
+        self.volume_slider = VolumeSlider()
+        self.volume_slider.setRange(0, 100)
+        self.volume_slider.setValue(initial_volume)
+        self.volume_slider.setFixedWidth(130)
+        self.volume_slider.valueChanged.connect(volume_handler)
+        self.volume_slider.hide()
+
+        self.volume_layout = QHBoxLayout(self)
+        self.volume_layout.setContentsMargins(0, 0, 0, 0)
+        self.volume_layout.addWidget(self.volume_button)
+        self.volume_layout.addWidget(self.volume_slider)
+
+        self.volume_button.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.volume_slider.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+
+        self.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if self.volume_button.isEnabled():
+            if event.type() == QEvent.Enter:
+                self.volume_slider.show()
+            elif event.type() == QEvent.Leave:
+                self.volume_slider.hide()
+        return super(VolumeWidget, self).eventFilter(obj, event)
+
+
 # app constants
 app_name = 'Alex MultiMedia'
 initial_volume = 15
@@ -111,6 +152,7 @@ class MainWindow(QMainWindow):
         self.image_label.setAlignment(Qt.AlignCenter)
 
         self.create_controls()
+        self.enable_controls(False)
         self.create_shortcuts()
 
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
@@ -142,39 +184,24 @@ class MainWindow(QMainWindow):
         self.play_icon = QIcon(resource_path('img/play.png'))
         self.pause_icon = QIcon(resource_path('img/pause.png'))
         self.play_button = QPushButton()
-        self.play_button.setEnabled(False)
         self.play_button.setIcon(self.play_icon)
         self.play_button.setIconSize(button_icon_size)
         self.play_button.clicked.connect(self.play)
 
         # Replay 10 seconds button
         self.replay_10_button = QPushButton()
-        self.replay_10_button.setEnabled(False)
         self.replay_10_button.setIcon(QIcon(resource_path('img/replay10.png')))
         self.replay_10_button.setIconSize(button_icon_size)
         self.replay_10_button.clicked.connect(lambda: self.rewind_media(10500))
 
         # Forward 30 seconds button
         self.forward_30_button = QPushButton()
-        self.forward_30_button.setEnabled(False)
         self.forward_30_button.setIcon(QIcon(resource_path('img/forward30.png')))
         self.forward_30_button.setIconSize(button_icon_size)
         self.forward_30_button.clicked.connect(lambda: self.forward_media(30000))
 
-        # Volume/Mute button
-        self.volume_icon = QIcon(resource_path('img/volume.png'))
-        self.mute_icon = QIcon(resource_path('img/mute.png'))
-        self.volume_button = QPushButton()
-        self.volume_button.setIcon(self.volume_icon)
-        self.volume_button.setIconSize(button_icon_size)
-        self.volume_button.clicked.connect(self.mute_handler)
-
-        # Volume slider
-        self.volume_slider = VolumeSlider()
-        self.volume_slider.setRange(0, 100)
-        self.volume_slider.setValue(initial_volume)
-        self.volume_slider.setMaximumWidth(130)
-        self.volume_slider.valueChanged.connect(self.volume_handler)
+        # Volume widget
+        self.volume_widget = VolumeWidget(self.mute_handler, self.volume_handler)
 
         # Progress slider
         self.progress_slider = QSlider(Qt.Horizontal)
@@ -191,8 +218,8 @@ class MainWindow(QMainWindow):
         self.open_button.clicked.connect(self.open_file)
 
         # Sets cursor to "pointer" for each control
-        controls = [self.progress_slider, self.play_button, self.replay_10_button,
-                    self.forward_30_button, self.volume_button, self.volume_slider, self.open_button]
+        controls = [self.progress_slider, self.play_button, self.replay_10_button, self.forward_30_button,
+                    self.volume_widget.volume_button, self.volume_widget.volume_slider, self.open_button]
         for control in controls:
             control.setCursor(Qt.CursorShape.PointingHandCursor)
 
@@ -200,11 +227,12 @@ class MainWindow(QMainWindow):
         self.controls_bar.setStyleSheet("background-color: white;")
 
         self.controls_layout = QHBoxLayout(self.controls_bar)
+        self.controls_layout.setContentsMargins(9, 0, 9, 0)
         self.controls_layout.addWidget(self.play_button)
         self.controls_layout.addWidget(self.replay_10_button)
         self.controls_layout.addWidget(self.forward_30_button)
-        self.controls_layout.addWidget(self.volume_button)
-        self.controls_layout.addWidget(self.volume_slider)
+        self.controls_layout.addSpacing(2)
+        self.controls_layout.addWidget(self.volume_widget)
         self.controls_layout.addSpacing(30)
         self.controls_layout.addWidget(self.progress_slider)
         self.controls_layout.addSpacing(5)
@@ -234,13 +262,12 @@ class MainWindow(QMainWindow):
 
     def open_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, 'Open File', initial_dir, file_filter)
-
         self.play_file(file_path)
 
     def play_file(self, file_path):
         if file_path != '':
             self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(file_path)))
-            self.enable_controls()
+            self.enable_controls(True)
 
             if file_path.endswith(('.mp3', '.m4a', '.flac')):
                 self.image_label.show()
@@ -274,10 +301,12 @@ class MainWindow(QMainWindow):
                     return
         self.image_label.setPixmapPath(resource_path(default_album_cover_path))
 
-    def enable_controls(self):
-        self.play_button.setEnabled(True)
-        self.replay_10_button.setEnabled(True)
-        self.forward_30_button.setEnabled(True)
+    def enable_controls(self, enabled):
+        self.play_button.setEnabled(enabled)
+        self.replay_10_button.setEnabled(enabled)
+        self.forward_30_button.setEnabled(enabled)
+        self.volume_widget.volume_button.setEnabled(enabled)
+        self.progress_slider.setEnabled(enabled)
 
     def play(self):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
@@ -327,16 +356,16 @@ class MainWindow(QMainWindow):
             self.showFullScreen()
 
     def mute_handler(self):
-        if self.volume_slider.value() == 0:
-            self.volume_slider.setValue(self.previous_volume)
+        if self.volume_widget.volume_slider.value() == 0:
+            self.volume_widget.volume_slider.setValue(self.previous_volume)
         else:
-            self.volume_slider.setValue(0)
+            self.volume_widget.volume_slider.setValue(0)
 
     def volume_handler(self, value):
         if value == 0:
-            self.volume_button.setIcon(self.mute_icon)
+            self.volume_widget.volume_button.setIcon(self.volume_widget.mute_icon)
         else:
-            self.volume_button.setIcon(self.volume_icon)
+            self.volume_widget.volume_button.setIcon(self.volume_widget.volume_icon)
             self.previous_volume = value
         self.mediaPlayer.setVolume(value)
 
