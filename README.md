@@ -1,4 +1,4 @@
-# Simple PyQt6 Multimedia Player
+# Simple PyQt5 Multimedia Player
 
 ### Create executable file from root directory
 ```
