@@ -37,5 +37,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='D:\\___________________TempProjects\\pyqt5-player\\img\\app_icon.ico',
+    icon='D:\\___________________TempProjects\\pyqt-player\\img\\app_icon.ico',
 )

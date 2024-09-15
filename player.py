@@ -407,7 +407,7 @@ class MainWindow(QMainWindow):
         else:
             self.show_controls(False)
 
-    # stores up to 100 latest playback positions with a timestamp (date and time) in a human-readable format
+    # saves playback position with a timestamp (date and time) in a human-readable format
     def save_playback_position(self):
         if self.file_path:
             self.playback_positions[self.file_path] = {
@@ -415,13 +415,15 @@ class MainWindow(QMainWindow):
                 "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }
 
-            # If there are more than 100 entries, remove the oldest ones by timestamp
-            if len(self.playback_positions) > MAX_PLAYBACK_POSITIONS:
-                sorted_positions = sorted(self.playback_positions.items(), key=lambda item: item[1]['timestamp'])
-                self.playback_positions = dict(sorted_positions[-MAX_PLAYBACK_POSITIONS:])
+    # stores up to 100 latest playback positions in json file
+    def write_playback_positions(self):
+        # If there are more than 100 entries, remove the oldest ones by timestamp
+        if len(self.playback_positions) > MAX_PLAYBACK_POSITIONS:
+            sorted_positions = sorted(self.playback_positions.items(), key=lambda item: item[1]['timestamp'])
+            self.playback_positions = dict(sorted_positions[-MAX_PLAYBACK_POSITIONS:])
 
-            with open(self.playback_file, 'w') as f:
-                json.dump(self.playback_positions, f, indent=4)
+        with open(self.playback_file, 'w') as f:
+            json.dump(self.playback_positions, f, indent=4)
 
     def load_playback_positions(self):
         if os.path.exists(self.playback_file):
@@ -461,6 +463,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.save_playback_position()
+        self.write_playback_positions()
         event.accept()
 
 
