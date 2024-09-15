@@ -6,14 +6,16 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
-from PyQt6.QtCore import Qt, QUrl, QTimer
+from PyQt6.QtCore import Qt, QUrl
 from PyQt6.QtGui import QCloseEvent
+
 
 class MediaPlayer(QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("PyQt6 Media Player")
+        self.setGeometry(320, 180, 960, 540)
 
         # Initialize Media Player
         self.player = QMediaPlayer()
@@ -62,8 +64,11 @@ class MediaPlayer(QMainWindow):
         self.player.positionChanged.connect(self.update_position)
         self.player.durationChanged.connect(self.update_duration)
 
+        # Connect media status change to check when the media is loaded
+        self.player.mediaStatusChanged.connect(self.on_media_status_changed)
+
         # Load playback positions
-        self.app_data_dir = os.path.join(os.getenv('LOCALAPPDATA'), 'PyQt6MediaPlayer')
+        self.app_data_dir = os.path.join(os.getenv('LOCALAPPDATA'), 'PyQtMediaPlayer')
         os.makedirs(self.app_data_dir, exist_ok=True)
         self.playback_file = os.path.join(self.app_data_dir, 'playback_state.json')
         self.playback_positions = self.load_playback_positions()
@@ -78,10 +83,12 @@ class MediaPlayer(QMainWindow):
         if file_path:
             self.current_file_path = file_path
             self.player.setSource(QUrl.fromLocalFile(file_path))
-            
+
+    def on_media_status_changed(self, status):
+        if status == QMediaPlayer.MediaStatus.LoadedMedia:
             # Resume playback if a position was saved
-            if file_path in self.playback_positions:
-                self.player.setPosition(self.playback_positions[file_path])
+            if self.current_file_path in self.playback_positions:
+                self.player.setPosition(int(self.playback_positions[self.current_file_path]))
 
     def play_media(self):
         if self.current_file_path:
@@ -121,6 +128,7 @@ class MediaPlayer(QMainWindow):
         if self.current_file_path:
             self.save_playback_position()
         event.accept()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

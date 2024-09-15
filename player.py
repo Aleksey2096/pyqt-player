@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QStyle, QSlider, QFileDialog,
                              QMainWindow, QLabel, QShortcut, QSizePolicy)
-from PyQt5.QtGui import QIcon, QPixmap, QPainter
+from PyQt5.QtGui import QIcon, QPixmap, QPainter, QCloseEvent
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtCore import Qt, QUrl, QTimer, QSize, QEvent
@@ -8,6 +8,8 @@ from mutagen.mp3 import MP3
 from mutagen.mp4 import MP4, MP4Cover
 from mutagen.flac import FLAC
 from mutagen.id3 import ID3, APIC
+from datetime import datetime
+import json
 import sys
 import os
 
@@ -70,14 +72,14 @@ class VolumeWidget(QWidget):
         self.mute_icon = QIcon(resource_path('img/mute.png'))
         self.volume_button = QPushButton()
         self.volume_button.setIcon(self.volume_icon)
-        self.volume_button.setIconSize(button_icon_size)
+        self.volume_button.setIconSize(BUTTON_ICON_SIZE)
         self.volume_button.setFixedSize(self.volume_button.iconSize())
         self.volume_button.clicked.connect(mute_handler)
 
         # Volume slider
         self.volume_slider = VolumeSlider()
         self.volume_slider.setRange(0, 100)
-        self.volume_slider.setValue(initial_volume)
+        self.volume_slider.setValue(INITIAL_VOLUME)
         self.volume_slider.setFixedWidth(130)
         self.volume_slider.valueChanged.connect(volume_handler)
         self.volume_slider.hide()
@@ -102,12 +104,16 @@ class VolumeWidget(QWidget):
 
 
 # app constants
-app_name = 'Alex MultiMedia'
-initial_volume = 15
-button_icon_size = QSize(25, 25)
-initial_dir = 'D:/My documents/Downloads'
-file_filter = "Video and Music Files (*.mp4 *.avi *.mkv *.wmv *.mp3 *.flac *.m4a)"
-default_album_cover_path = 'img/default_album_cover.jpg'
+APP_NAME = 'Alex MultiMedia'
+INITIAL_VOLUME = 15
+BUTTON_ICON_SIZE = QSize(25, 25)
+INITIAL_DIR = 'D:/My documents/Downloads'
+FILE_FILTER = 'Video and Music Files (*.mp4 *.avi *.mkv *.wmv *.mp3 *.flac *.m4a)'
+DEFAULT_ALBUM_COVER_PATH = 'img/default_album_cover.jpg'
+LOCAL_APP_DATA_ENV = 'LOCALAPPDATA'
+PLAYBACK_DIR = 'PyQtMediaPlayer'
+PLAYBACK_FILE = 'playback_state.json'
+MAX_PLAYBACK_POSITIONS = 100
 
 
 class MainWindow(QMainWindow):
@@ -115,8 +121,10 @@ class MainWindow(QMainWindow):
     def __init__(self, file_path=None):
         super().__init__()
 
+        self.file_path = file_path
+
         self.setWindowIcon(QIcon(resource_path('img/app_icon.ico')))
-        self.setWindowTitle(app_name)
+        self.setWindowTitle(APP_NAME)
         self.setGeometry(320, 180, 960, 540)
         self.setStyleSheet("""
             * {
@@ -133,9 +141,16 @@ class MainWindow(QMainWindow):
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
 
         self.build_player()
+        self.manage_playback_positions()
 
-        if file_path:
-            self.play_file(file_path)
+        if self.file_path:
+            self.play_file()
+
+    def manage_playback_positions(self):
+        self.app_data_dir = os.path.join(os.getenv(LOCAL_APP_DATA_ENV), PLAYBACK_DIR)
+        os.makedirs(self.app_data_dir, exist_ok=True)
+        self.playback_file = os.path.join(self.app_data_dir, PLAYBACK_FILE)
+        self.playback_positions = self.load_playback_positions()
 
     def build_player(self):
         self.central_widget = QWidget(self)
@@ -173,11 +188,13 @@ class MainWindow(QMainWindow):
         self.mediaPlayer.stateChanged.connect(self.playing_state_handler)
         self.mediaPlayer.positionChanged.connect(self.position_handler)
         self.mediaPlayer.durationChanged.connect(self.duration_handler)
+        # Connect media status change to check when the media is buffered
+        self.mediaPlayer.mediaStatusChanged.connect(self.on_media_status_changed)
 
-        self.previous_volume = initial_volume
+        self.previous_volume = INITIAL_VOLUME
 
         # Set player's initial volume
-        self.mediaPlayer.setVolume(initial_volume)
+        self.mediaPlayer.setVolume(INITIAL_VOLUME)
 
     def create_controls(self):
         # Play/Pause button
@@ -185,19 +202,19 @@ class MainWindow(QMainWindow):
         self.pause_icon = QIcon(resource_path('img/pause.png'))
         self.play_button = QPushButton()
         self.play_button.setIcon(self.play_icon)
-        self.play_button.setIconSize(button_icon_size)
+        self.play_button.setIconSize(BUTTON_ICON_SIZE)
         self.play_button.clicked.connect(self.play)
 
         # Replay 10 seconds button
         self.replay_10_button = QPushButton()
         self.replay_10_button.setIcon(QIcon(resource_path('img/replay10.png')))
-        self.replay_10_button.setIconSize(button_icon_size)
+        self.replay_10_button.setIconSize(BUTTON_ICON_SIZE)
         self.replay_10_button.clicked.connect(lambda: self.rewind_media(10500))
 
         # Forward 30 seconds button
         self.forward_30_button = QPushButton()
         self.forward_30_button.setIcon(QIcon(resource_path('img/forward30.png')))
-        self.forward_30_button.setIconSize(button_icon_size)
+        self.forward_30_button.setIconSize(BUTTON_ICON_SIZE)
         self.forward_30_button.clicked.connect(lambda: self.forward_media(30000))
 
         # Volume widget
@@ -214,7 +231,7 @@ class MainWindow(QMainWindow):
         # Open File button
         self.open_button = QPushButton()
         self.open_button.setIcon(QIcon(resource_path('img/openFile.png')))
-        self.open_button.setIconSize(button_icon_size)
+        self.open_button.setIconSize(BUTTON_ICON_SIZE)
         self.open_button.clicked.connect(self.open_file)
 
         # Sets cursor to "pointer" for each control
@@ -261,45 +278,46 @@ class MainWindow(QMainWindow):
         self.show_controls_shortcut.activated.connect(lambda: self.show_controls(True))
 
     def open_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, 'Open File', initial_dir, file_filter)
-        self.play_file(file_path)
+        self.save_playback_position()
+        self.file_path, _ = QFileDialog.getOpenFileName(self, 'Open File', INITIAL_DIR, FILE_FILTER)
+        self.play_file()
 
-    def play_file(self, file_path):
-        if file_path != '':
-            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(file_path)))
+    def play_file(self):
+        if self.file_path != '':
+            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(self.file_path)))
             self.enable_controls(True)
 
-            if file_path.endswith(('.mp3', '.m4a', '.flac')):
+            if self.file_path.endswith(('.mp3', '.m4a', '.flac')):
                 self.image_label.show()
                 self.video_widget.hide()
-                self.display_album_cover(file_path)
+                self.display_album_cover()
             else:
                 self.image_label.hide()
                 self.video_widget.show()
 
             self.play()
             self.show_controls(False)
-            self.setWindowTitle(f'{app_name} - {os.path.basename(file_path)}')
+            self.setWindowTitle(f'{APP_NAME} - {os.path.basename(self.file_path)}')
 
-    def display_album_cover(self, file_path):
-        if file_path.endswith('.mp3'):
-            audio = MP3(file_path, ID3=ID3)
+    def display_album_cover(self):
+        if self.file_path.endswith('.mp3'):
+            audio = MP3(self.file_path, ID3=ID3)
             for tag in audio.tags.values():
                 if isinstance(tag, APIC):
                     self.image_label.setPixmap(tag.data)
                     return
-        elif file_path.endswith('.flac'):
-            audio = FLAC(file_path)
+        elif self.file_path.endswith('.flac'):
+            audio = FLAC(self.file_path)
             for picture in audio.pictures:
                 self.image_label.setPixmap(picture.data)
                 return
-        elif file_path.endswith('.m4a'):
-            audio = MP4(file_path)
+        elif self.file_path.endswith('.m4a'):
+            audio = MP4(self.file_path)
             for cover in audio.tags.get('covr', []):
                 if cover.imageformat == MP4Cover.FORMAT_JPEG or cover.imageformat == MP4Cover.FORMAT_PNG:
                     self.image_label.setPixmap(cover)
                     return
-        self.image_label.setPixmapPath(resource_path(default_album_cover_path))
+        self.image_label.setPixmapPath(resource_path(DEFAULT_ALBUM_COVER_PATH))
 
     def enable_controls(self, enabled):
         self.play_button.setEnabled(enabled)
@@ -389,6 +407,36 @@ class MainWindow(QMainWindow):
         else:
             self.show_controls(False)
 
+    # stores up to 100 latest playback positions with a timestamp (date and time) in a human-readable format
+    def save_playback_position(self):
+        if self.file_path:
+            self.playback_positions[self.file_path] = {
+                "position": self.mediaPlayer.position(),
+                "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+
+            # If there are more than 100 entries, remove the oldest ones by timestamp
+            if len(self.playback_positions) > MAX_PLAYBACK_POSITIONS:
+                sorted_positions = sorted(self.playback_positions.items(), key=lambda item: item[1]['timestamp'])
+                self.playback_positions = dict(sorted_positions[-MAX_PLAYBACK_POSITIONS:])
+
+            with open(self.playback_file, 'w') as f:
+                json.dump(self.playback_positions, f, indent=4)
+
+    def load_playback_positions(self):
+        if os.path.exists(self.playback_file):
+            with open(self.playback_file, 'r') as f:
+                return json.load(f)
+        return {}
+
+    def on_media_status_changed(self, status):
+        if status == QMediaPlayer.BufferedMedia:
+            # Resume playback if a position was saved
+            if self.file_path in self.playback_positions:
+                # Rewind by 5 seconds (5000 milliseconds), but don't go below 0
+                position = max(0, int(self.playback_positions[self.file_path]['position']) - 5000)
+                self.mediaPlayer.setPosition(position)
+
     # implementations of the parent methods ↓
 
     def mousePressEvent(self, event):
@@ -410,6 +458,10 @@ class MainWindow(QMainWindow):
 
     def resizeEvent(self, event):
         self.controls_bar.setGeometry(15, self.height() - 55, self.width() - 30, 40)
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self.save_playback_position()
+        event.accept()
 
 
 if __name__ == '__main__':
